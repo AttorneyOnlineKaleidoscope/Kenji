@@ -1,75 +1,81 @@
 #include "playerstateobserver.h"
 
-PlayerStateObserver::PlayerStateObserver(QObject *parent) :
-    QObject{parent}
+#include "network/packet/player_packets.h"
+
+PlayerStateObserver::PlayerStateObserver(QObject *parent)
+    : QObject{parent}
 {}
 
-PlayerStateObserver::~PlayerStateObserver() {}
+PlayerStateObserver::~PlayerStateObserver()
+{}
 
 void PlayerStateObserver::registerClient(AOClient *client)
 {
-    Q_ASSERT(!m_client_list.contains(client));
+  Q_ASSERT(!m_client_list.contains(client));
 
-    PacketPR packet(client->clientId(), PacketPR::ADD);
-    sendToClientList(packet);
+  kal::RegisterPlayerPacket packet(client->playerId(), kal::RegisterPlayerPacket::Add);
+  sendToClientList(packet);
 
-    m_client_list.append(client);
+  m_client_list.append(client);
 
-    connect(client, &AOClient::nameChanged, this, &PlayerStateObserver::notifyNameChanged);
-    connect(client, &AOClient::characterChanged, this, &PlayerStateObserver::notifyCharacterChanged);
-    connect(client, &AOClient::characterNameChanged, this, &PlayerStateObserver::notifyCharacterNameChanged);
-    connect(client, &AOClient::areaIdChanged, this, &PlayerStateObserver::notifyAreaIdChanged);
+  connect(client, &AOClient::nameChanged, this, &PlayerStateObserver::notifyNameChanged);
+  connect(client, &AOClient::characterChanged, this, &PlayerStateObserver::notifyCharacterChanged);
+  connect(client, &AOClient::characterNameChanged, this, &PlayerStateObserver::notifyCharacterNameChanged);
+  connect(client, &AOClient::areaIdChanged, this, &PlayerStateObserver::notifyAreaIdChanged);
 
-    QList<AOPacket *> packets;
-    for (AOClient *i_client : qAsConst(m_client_list)) {
-        packets.append(new PacketPR(i_client->clientId(), PacketPR::ADD));
-        packets.append(new PacketPU(i_client->clientId(), PacketPU::NAME, i_client->name()));
-        packets.append(new PacketPU(i_client->clientId(), PacketPU::CHARACTER, i_client->character()));
-        packets.append(new PacketPU(i_client->clientId(), PacketPU::CHARACTER_NAME, i_client->characterName()));
-        packets.append(new PacketPU(i_client->clientId(), PacketPU::AREA_ID, i_client->areaId()));
-    }
+  QList<kal::Packet> packets;
+  for (AOClient *i_client : qAsConst(m_client_list))
+  {
+    kal::PlayerId id = i_client->playerId();
+    packets.append(kal::RegisterPlayerPacket(id, kal::RegisterPlayerPacket::Add));
+    packets.append(kal::UpdatePlayerPacket(id, kal::UpdatePlayerPacket::Name, i_client->name()));
+    packets.append(kal::UpdatePlayerPacket(id, kal::UpdatePlayerPacket::Character, i_client->character()));
+    packets.append(kal::UpdatePlayerPacket(id, kal::UpdatePlayerPacket::CharacterName, i_client->characterName()));
+    packets.append(kal::UpdatePlayerPacket(id, kal::UpdatePlayerPacket::AreaId, i_client->areaId()));
+  }
 
-    for (AOPacket *packet : qAsConst(packets)) {
-        client->sendPacket(packet);
-        delete packet;
-    }
+  for (const kal::Packet &packet : qAsConst(packets))
+  {
+    client->shipPacket(packet);
+  }
 }
 
 void PlayerStateObserver::unregisterClient(AOClient *client)
 {
-    Q_ASSERT(m_client_list.contains(client));
+  Q_ASSERT(m_client_list.contains(client));
 
-    disconnect(client, nullptr, this, nullptr);
+  disconnect(client, nullptr, this, nullptr);
 
-    m_client_list.removeAll(client);
+  m_client_list.removeAll(client);
 
-    PacketPR packet(client->clientId(), PacketPR::REMOVE);
-    sendToClientList(packet);
+  kal::RegisterPlayerPacket packet(client->playerId(), kal::RegisterPlayerPacket::Remove);
+  sendToClientList(packet);
 }
 
-void PlayerStateObserver::sendToClientList(const AOPacket &packet)
+void PlayerStateObserver::sendToClientList(const kal::Packet &packet)
 {
-    for (AOClient *client : qAsConst(m_client_list)) {
-        client->sendPacket(&const_cast<AOPacket &>(packet));
-    }
+  for (AOClient *client : qAsConst(m_client_list))
+  {
+    client->shipPacket(packet);
+  }
 }
 
 void PlayerStateObserver::notifyNameChanged(const QString &name)
 {
-    sendToClientList(PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::NAME, name));
+  sendToClientList(kal::UpdatePlayerPacket(qobject_cast<AOClient *>(sender())->playerId(), kal::UpdatePlayerPacket::Name, name));
 }
 
 void PlayerStateObserver::notifyCharacterChanged(const QString &character)
 {
-    sendToClientList(PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::CHARACTER, character));
+  sendToClientList(kal::UpdatePlayerPacket(qobject_cast<AOClient *>(sender())->playerId(), kal::UpdatePlayerPacket::Character, character));
 }
 
 void PlayerStateObserver::notifyCharacterNameChanged(const QString &characterName)
 {
-    sendToClientList(PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::CHARACTER_NAME, characterName));
+  sendToClientList(kal::UpdatePlayerPacket(qobject_cast<AOClient *>(sender())->playerId(), kal::UpdatePlayerPacket::CharacterName, characterName));
 }
 
 void PlayerStateObserver::notifyAreaIdChanged(int areaId)
 {
-    sendToClientList(PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::AREA_ID, areaId));
+  sendToClientList(kal::UpdatePlayerPacket(qobject_cast<AOClient *>(sender())->playerId(), kal::UpdatePlayerPacket::AreaId, areaId));
 }
