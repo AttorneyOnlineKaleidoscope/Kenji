@@ -91,7 +91,7 @@ void AOClient::cmdAbout(int argc, QStringList argv)
   Q_UNUSED(argc);
   Q_UNUSED(argv);
 
-  shipPacket(kal::ChatPacket("The akashi dev team", "Thank you for using akashi! Made with love by scatterflower, with help from in1tiate, Salanto, and mangosarentliterature. akashi " + QCoreApplication::applicationVersion() + ". For documentation and reporting issues, see the source: https://github.com/AttorneyOnlineKaleidoscope/akashi", true));
+  shipPacket(kal::ChatPacket("The Kenji dev team", "Thank you for using Kenji! Made with love by scatterflower, with help from in1tiate, Salanto, and mangosarentliterature. Kenji " + QCoreApplication::applicationVersion() + ". For documentation and reporting issues, see the source: https://github.com/AttorneyOnlineKaleidoscope/Kenji", true));
 }
 
 void AOClient::cmdMods(int argc, QStringList argv)
